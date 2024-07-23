@@ -52,3 +52,21 @@ def calculateM(envPath: str, quiet: bool = False) -> dict:
     mScores = getMScores(grid, epLen, quiet)
 
     return mScores
+
+if __name__ == "__main__":
+    GRIDPATH = "./exampleEnvironments/7x7env1.txt"
+
+    print()
+    mScores = calculateM(GRIDPATH, quiet=False)
+    print(f" ----- RESULTS: -----\n")
+    print(f"   Number of different trajectory lengths: {len(mScores)}")
+    for trajLength, (m, path) in mScores.items():
+        print(f"    > m{trajLength} = {m}")
+    print()
+
+# for 7x7 grid, mScores should look like:
+#  Number of different trajectory lengths: 4
+#   > m5 = 3
+#   > m8 = 4
+#   > m9 = 5
+#   > m12 = 5

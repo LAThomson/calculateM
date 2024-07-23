@@ -20,7 +20,7 @@ class Object:
         Returns a tuple (x,y) describing the objects location.
     """
     
-    def __init__(self, identifier : str, x : str, y : str, value : int):
+    def __init__(self, identifier : str, x : int, y : int, value : int):
         self.identifier = identifier
         match self.identifier:
             case "SD":
@@ -103,7 +103,7 @@ class AStarNode(Node):
         The sum of g and h for this node.
     """
 
-    def __init__(self, parent: Node, loc: (int, int), g: int, h: int):
+    def __init__(self, parent: Node, loc: tuple[int, int], g: int, h: int):
         self.parent = parent
         self.loc = loc
         self.g = g
@@ -196,3 +196,39 @@ class DLSNode(Node):
 
     def __ge__(self, other):
         return self.score >= other.score
+
+class BFSNode(Node):
+    """A class used to represent a Node for simple breadth-first search.
+
+    Attributes
+    ----------
+    parent : Node
+        The parent node, i.e. the node from which this node was explored.
+    loc : (int, int)
+        The coordinates of the tile represented by this node.
+    g : int
+        The path cost spent to get to this node.
+    """
+
+    def __init__(self, parent: Node, loc: tuple[int, int], g: int):
+        self.parent = parent
+        self.loc = loc
+        self.g = g
+
+    def __eq__(self, other):
+        if isinstance(other, BFSNode):
+            return self.loc == other.loc
+        else:
+            return False
+    
+    def __lt__(self, other):
+        return self.g < other.g
+    
+    def __le__(self, other):
+        return self.g <= other.g
+    
+    def __gt__(self, other):
+        return self.g > other.g
+    
+    def __ge__(self, other):
+        return self.g >= other.g

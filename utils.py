@@ -1,4 +1,4 @@
-from classes import Object, AStarNode, DLSNode
+from classes import Object, AStarNode, DLSNode, BFSNode
 
 import numpy as np
 
@@ -10,7 +10,7 @@ import copy
 
 MAXDIST = 10e9
 
-def parseEnv(filepath: str) -> (int, list):
+def parseEnv(filepath: str) -> tuple[int, list]:
     """Parses the given environment text file.
 
     Parameters
@@ -43,7 +43,7 @@ def parseEnv(filepath: str) -> (int, list):
         # read remaining lines into grid format
         for line in file.readlines():
             grid.append(line.split())
-        
+
         # get the transpose of the grid, so first index denotes column
         grid = np.array(grid).T.tolist()
         
@@ -81,13 +81,13 @@ def findAll(target: str, grid: list) -> list:
 
     return locsAndVals
 
-def getManhattanDist(start: (int, int), end: (int, int)) -> int:
+def getManhattanDist(start: tuple[int, int], end: tuple[int, int]) -> int:
     """Gets the Manhattan distance between two tiles in the grid.
     """
 
     return abs(end[0] - start[0]) + abs(end[1] - start[1])
 
-def getFreeNeighbours(tile: (int, int), grid: list) -> list:
+def getFreeNeighbours(tile: tuple[int, int], grid: list) -> list:
     """Gets all the free (not wall) neighbours of tile in grid.
     
     Parameters
@@ -108,20 +108,18 @@ def getFreeNeighbours(tile: (int, int), grid: list) -> list:
 
     # iterate neighbours of tile
     for neighbour in [(tile[0], tile[1]-1), (tile[0]+1, tile[1]), (tile[0], tile[1]+1), (tile[0]-1, tile[1])]:
-        # check if tile in grid is free
-        try:
-            isWall = grid[neighbour[0]][neighbour[1]]
-        except IndexError:
-            # if neighbour outside grid, ignore
+        # check if tile is in grid
+        if neighbour[0] < 0 or neighbour[0] >= len(grid) or neighbour[1] < 0 or neighbour[1] >= len(grid):
             continue
         else:
             # only add to neighbours if isWall == 0
+            isWall = grid[neighbour[0]][neighbour[1]]
             if isWall == 0:
                 neighbours.append(neighbour)
     
     return neighbours
 
-def aStarSearch(start: (int, int), end: (int, int), binGrid: list, heuristicFn) -> (int, list):
+def aStarSearch(start: tuple[int, int], end: tuple[int, int], binGrid: list, heuristicFn) -> tuple[int, list]:
     """Carries out the A* search algorithm on the given grid.
 
     Parameters
@@ -189,12 +187,12 @@ def aStarSearch(start: (int, int), end: (int, int), binGrid: list, heuristicFn) 
                     h = heuristicFn(loc, end)
                     heapq.heappush(pq, AStarNode(parent, loc, g, h))
 
-    # if code reaches this point, no path found, so raise error
-    print(f"Warning: no path could be found between {start} and {end}.")
-    print("Distance will be set to MAXDIST as precaution.")
+    # if code reaches this point, no path found, so return the MAXDIST
+    # print(f"Warning: no path could be found between {start} and {end}.")
+    # print("Distance will be set to MAXDIST as precaution.")
     return (MAXDIST, [])
 
-def getDist(start: (int, int), end: (int, int), grid: list) -> int:
+def getDist(start: tuple[int, int], end: tuple[int, int], grid: list) -> int:
     """Finds the length of the shortest path (found using A*) from start to end in the given grid.
 
     Parameters
@@ -226,7 +224,7 @@ def getDist(start: (int, int), end: (int, int), grid: list) -> int:
     return distance
 
 def convertToGraph(grid: list) -> dict:
-    """Converts a given grid the corresponding object graph, represented using an adjacency matrix.
+    """Converts a given grid to the corresponding object graph, represented using an adjacency matrix.
 
     Takes a given gridworld environment and converts it into a graph in which vertices
     are non-obstacle object tiles (e.g. SD buttons and coins) and edge values represent
@@ -387,3 +385,101 @@ def getMScores(grid: list, defaultLimit : int, quiet: bool = False) -> dict:
     # once the queue is empty, all possible paths that could be taken before
     # shutdown have been explored, so just return the mScores dictionary
     return mScores
+
+def pprintGrid(grid: list, epLen: int = None):
+    """Pretty prints a given grid to the terminal.
+
+    Parameters
+    ----------
+    grid : list
+        The gridworld to be printed.
+    epLen : int, default = None
+        Optional argument to specify default episode length.
+    """
+
+    columnWidths = [max(map(lambda s : len(s), col)) for col in grid]
+    gridByRow = np.array(grid).T.tolist()
+    print()
+    if epLen != None:
+        print(epLen)
+    for row in gridByRow:
+        for i, c in enumerate(row):
+            print(f"{c:^{columnWidths[i]}}", end=" ")
+        print()
+
+def gridArrayToTensor(grid: list):
+    raise(NotImplementedError)
+
+def gridTensorToArray(grid):
+    raise(NotImplementedError)
+
+def checkContiguous(grid: list) -> bool:
+    """Checks if a given simple grid is made of a single contiguous shape.
+
+    Applies a simple breadth-first search algorithm to see if there are any spaces
+    in the grid that are unreachable from the Agent's starting position.
+
+    Parameters
+    ----------
+    grid : list
+        A 2D array representing a gridworld environment.
+
+    Returns
+    -------
+    isContiguous : bool
+        True iff all free grid squares can be reached from Agent's starting location.
+    """
+
+    # first, initialise a simple FIFO queue for the search frontier
+    q = queue.SimpleQueue()
+
+    # also intialise empty sets for visited nodes (so search terminates) and
+    # unvisited nodes (to check for contiguity) containing coordinates only
+    visited = set()
+    unvisited = set()
+
+    # enumerate all squares in grid
+    for x, col in enumerate(grid):
+        for y, tile in enumerate(col):
+            
+            # if square contains agent, mark as starting point
+            if tile == "A":
+                start = BFSNode(None, (x,y), 0)
+                unvisited.add((x,y))
+            
+            # elif square contains empty space, mark it as one to track
+            elif tile == ".":
+                unvisited.add((x,y))
+    
+    # now create binary grid of 1s and 0s for walls and spaces respectively
+    binGrid = [[(0 if (tile=="." or tile=="A") else 1) for tile in col] for col in grid]
+
+    # push start to queue and then begin search loop
+    q.put(start)
+    while not q.empty():
+
+        # pop top Node off of queue
+        currentNode = q.get()
+
+        # add it to visited
+        visited.add(currentNode.loc)
+
+        # and remove it from unvisited
+        unvisited.discard(currentNode.loc)
+
+        # in this setup, we always want to explore neighbours (no goal)
+        for neighbour in getFreeNeighbours(currentNode.loc, binGrid):
+            # skip if already visited
+            if neighbour in visited:
+                continue
+            
+            # otherwise, add a new Node for the neighbour to the pq
+            else:
+                parent = currentNode
+                loc = neighbour
+                g = parent.g + 1
+                q.put(BFSNode(parent, loc, g))
+
+    # once search is complete, just return whether or not unvisited is empty
+    # empty unvisited means all spaces were reachable from agent space
+    return (unvisited.__len__() == 0)
