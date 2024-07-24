@@ -177,6 +177,9 @@ def createGrid(size: tuple[int, int], numCoins: int, numButtons: int, seed: int,
         else:
             # subtract up to 33% of avgSideLen
             epLen -= nudgingFactor
+    
+    # add a check to make sure epLen > 1
+    epLen = max(epLen, 2)
 
     # now add SD buttons, ensuring that each button adds a new trajectory length
     while numButtons > 0:
