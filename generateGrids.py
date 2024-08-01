@@ -295,19 +295,39 @@ if __name__ == "__main__":
     dirPath = os.path.join(GRIDSPATH, f"seed_{starterSeed}_{gridType.name}_x{numGrids}")
     if not os.path.isdir(dirPath):
         os.mkdir(dirPath)
+        os.mkdir(os.path.join(dirPath, "grids/"))
     
     # add text file to dir to store parameters for this generation
     with open(os.path.join(dirPath, "__parameters__.txt"), "w") as file:
+        file.write("---- Provided Generation Arguments ----\n")
+        file.write("\n")
+        
         file.write(f"{numGrids = }\n")
         file.write(f"{size = }\n")
         file.write(f"{numCoins = }\n")
         file.write(f"{numButtons = }\n")
         file.write(f"{gridType = }\n")
         file.write(f"{starterSeed = }\n")
+        file.write("\n")
+        
+        file.write("---- Detailed Generation Parameters ----\n")
+        file.write("\n")
+
+        file.write(f"Number of walls generated using Binomial({NUMWALLN(size, gridType) if type(size) == tuple else NUMWALLN((size, size), gridType)}, {NUMWALLP})\n")
+        file.write("\n")
+
+        file.write(f"Nudging episode length (up or down) by {NUDGINGAMNT} with probability {NUDGINGPROB}\n")
+        file.write("\n")
+
+        file.write(f"Delay button values between {DELAYMIN} and {DELAYMAX}\n")
+        file.write("\n")
+
+        file.write(f"Coin values between {COINMIN} and {COINMAX(numCoins) if type(numCoins) == int else COINMAX(numCoins[1])}")
+        file.write("\n")
 
     # save each grid as a text file in directory
     for (seed, epLen, grid) in grids:
-        with open(os.path.join(dirPath, f"grid_{hex(seed)}.txt"), "w") as file:
+        with open(os.path.join(dirPath, "grids/", f"grid_{hex(seed)}.txt"), "w") as file:
             file.write(f"{epLen}\n")
             columnWidths = [max(map(lambda s : len(s), col)) for col in grid]
             gridByRow = np.array(grid).T.tolist()
