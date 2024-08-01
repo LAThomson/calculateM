@@ -17,6 +17,7 @@ from tqdm import tqdm
 from enum import Enum
 
 import argparse
+import re
 import numpy as np
 import random
 import copy
@@ -251,11 +252,24 @@ def createGrid(size: tuple[int, int], numCoins: int, numButtons: int, gridType: 
 
     return (seed, epLen, grid)
 
+def _convertArg(arg: str) -> Union[int, tuple[int, int]]:
+    try:
+        return int(arg)
+    except:
+        matches = re.findall(r"\d+", arg)
+        if len(matches) == 2:
+            try:
+                return (int(matches[0]), int(matches[1]))
+            except:
+                raise(TypeError, "An argument is not in the correct format. Please try again.")
+        else:
+            raise(TypeError, "An argument is not in the correct format. Please try again.")
+
 parser = argparse.ArgumentParser()
 parser.add_argument("-n", "--number", type=int, default=50)
-parser.add_argument("-s", "--size", type=Union[int, tuple[int, int]], default=DEFAULTSIZE)
-parser.add_argument("-c", "--numCoins", type=Union[int, tuple[int, int]], default=DEFAULTCOINS)
-parser.add_argument("-b", "--numButtons", type=Union[int, tuple[int, int]], default=DEFAULTBUTTONS)
+parser.add_argument("-s", "--size", type=_convertArg, default=DEFAULTSIZE)
+parser.add_argument("-c", "--numCoins", type=_convertArg, default=DEFAULTCOINS)
+parser.add_argument("-b", "--numButtons", type=_convertArg, default=DEFAULTBUTTONS)
 parser.add_argument("-t", "--gridType", type=int, default=1)
 
 if __name__ == "__main__":
