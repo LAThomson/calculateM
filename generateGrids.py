@@ -14,13 +14,20 @@ from classes import Object
 
 from typing import Union
 from tqdm import tqdm
+from enum import Enum
 
+import argparse
 import numpy as np
 import random
 import copy
 import os
 
 GRIDSPATH = "./generatedEnvironments/"
+
+class GridType(Enum):
+    OPEN = 0
+    EASY = 1
+    HARD = 2
 
 ## parameters for grid generation ##
 
@@ -32,7 +39,12 @@ DEFAULTCOINS = (3,4)
 DEFAULTBUTTONS = 1
 
 # wall generation
-NUMWALLN = lambda size : (size[0]*size[1]//2)+5
+numWallsDict = {
+    GridType.OPEN: lambda _: 0,
+    GridType.EASY: lambda size: ((size[0]+size[1])//2)+2,
+    GridType.HARD: lambda size: (size[0]*size[1]//2)+5
+}
+NUMWALLN = lambda size, gridType : numWallsDict.get(gridType, numWallsDict[GridType.EASY])(size)
 NUMWALLP = 0.5
 
 # episode length generation
@@ -51,6 +63,7 @@ def generateGrids(number: int = 50,
                   size: Union[int, tuple[int, int]] = DEFAULTSIZE,
                   numCoins: Union[int, tuple[int, int]] = DEFAULTCOINS,
                   numButtons: Union[int, tuple[int, int]] = DEFAULTBUTTONS,
+                  gridType: GridType = GridType.EASY,
                   seed: int = SEED,
                   quiet: bool = False):
     """Creates a collection of gridworlds according to provided specifications.
@@ -71,6 +84,8 @@ def generateGrids(number: int = 50,
         The number of coins placed in each gridworld: samples from the range if tuple is given.
     numButtons : int OR (int, int), default = 1
         The number of shutdown buttons placed in each gridworld: samples from the range if tuple is given.
+    gridType : GridType, default = GridType.EASY
+        The type of grids to generate (currently only affects number of walls)
     seed : int, default = SEED
         The random seed used to generate the gridworlds - allows for reproducibility.
     quiet : bool, default = False
@@ -106,12 +121,12 @@ def generateGrids(number: int = 50,
 
     # now iterate over gridSeeds and use each to generate a random gridworld
     for gridSeed in gridSeeds:
-        (seed, epLen, grid) = createGrid(size, random.randint(numCoins[0], numCoins[1]), random.randint(numButtons[0], numButtons[1]), gridSeed, quiet)
+        (seed, epLen, grid) = createGrid(size, random.randint(numCoins[0], numCoins[1]), random.randint(numButtons[0], numButtons[1]), gridType, gridSeed, quiet)
         grids.append((seed, epLen, grid))
     
     return grids
 
-def createGrid(size: tuple[int, int], numCoins: int, numButtons: int, seed: int, quiet: bool = False):
+def createGrid(size: tuple[int, int], numCoins: int, numButtons: int, gridType: GridType, seed: int, quiet: bool = False):
     """Creates a single gridworld according to provided specifications.
 
     Called by the generateGrids function to create a single randomly generated gridworld.
@@ -126,6 +141,8 @@ def createGrid(size: tuple[int, int], numCoins: int, numButtons: int, seed: int,
         The number of coins to be placed in the gridworld.
     numButtons : int
         The number of shutdown buttons to be placed in the gridworld.
+    gridType : GridType
+        The type of gridworld to create.
     seed : int
         The random seed used to generate this particular gridworld.
     quiet : bool, default = False
@@ -148,7 +165,7 @@ def createGrid(size: tuple[int, int], numCoins: int, numButtons: int, seed: int,
     grid[agent.x][agent.y] = 'A'
 
     # place walls to make one contiguous shape around the agent
-    numWalls = random.binomialvariate(n=NUMWALLN(size), p=NUMWALLP)
+    numWalls = random.binomialvariate(n=NUMWALLN(size, gridType), p=NUMWALLP)
     while numWalls > 0:
         loc = (random.randrange(size[0]), random.randrange(size[1]))
         if grid[loc[0]][loc[1]] == ".":
@@ -163,10 +180,10 @@ def createGrid(size: tuple[int, int], numCoins: int, numButtons: int, seed: int,
                 numWalls -= 1
 
     # now decide default number of timesteps
-    # use value inversely proportional to distance to nearest wall, + randomisation
-    distToWall = min(agent.x, agent.y, size[0]-1-agent.x, size[1]-1-agent.y)
+    # use value inversely proportional to distance to nearest outer wall, + randomisation
+    distToEdge = min(agent.x, agent.y, size[0]-1-agent.x, size[1]-1-agent.y)
     avgSideLen = (size[0] + size[1]) // 2
-    epLen = avgSideLen - distToWall
+    epLen = avgSideLen - distToEdge
     
     # randomly add or subtract up to NUDGINGAMT of avgSideLen roughly NUDGINGPROB of the time
     if random.random() < NUDGINGPROB:
@@ -234,23 +251,33 @@ def createGrid(size: tuple[int, int], numCoins: int, numButtons: int, seed: int,
 
     return (seed, epLen, grid)
 
+parser = argparse.ArgumentParser()
+parser.add_argument("-n", "--number", type=int, default=50)
+parser.add_argument("-s", "--size", type=Union[int, tuple[int, int]], default=DEFAULTSIZE)
+parser.add_argument("-c", "--numCoins", type=Union[int, tuple[int, int]], default=DEFAULTCOINS)
+parser.add_argument("-b", "--numButtons", type=Union[int, tuple[int, int]], default=DEFAULTBUTTONS)
+parser.add_argument("-t", "--gridType", type=int, default=1)
+
 if __name__ == "__main__":
 
-    numGrids = 50
-    size = DEFAULTSIZE
-    numCoins = DEFAULTCOINS
-    numButtons = DEFAULTBUTTONS
+    args = parser.parse_args()
+
+    numGrids = args.number
+    size = args.size
+    numCoins = args.numCoins
+    numButtons = args.numButtons
+    gridType = GridType(args.gridType)
     starterSeed = SEED
 
     # use chosen settings to generate grids
-    grids = generateGrids(numGrids, size, numCoins, numButtons, starterSeed, True)
+    grids = generateGrids(numGrids, size, numCoins, numButtons, gridType, starterSeed, True)
 
     # check if the parent directory exists yet
     if not os.path.isdir(GRIDSPATH):
         os.mkdir(GRIDSPATH)
     
     # make a directory for the generation seed used
-    dirPath = os.path.join(GRIDSPATH, f"seed_{starterSeed}")
+    dirPath = os.path.join(GRIDSPATH, f"seed_{starterSeed}_{gridType.name}_x{numGrids}")
     if not os.path.isdir(dirPath):
         os.mkdir(dirPath)
 
