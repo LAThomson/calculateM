@@ -295,6 +295,15 @@ if __name__ == "__main__":
     dirPath = os.path.join(GRIDSPATH, f"seed_{starterSeed}_{gridType.name}_x{numGrids}")
     if not os.path.isdir(dirPath):
         os.mkdir(dirPath)
+    
+    # add text file to dir to store parameters for this generation
+    with open(os.path.join(dirPath, "__parameters__.txt"), "w") as file:
+        file.write(f"{numGrids = }\n")
+        file.write(f"{size = }\n")
+        file.write(f"{numCoins = }\n")
+        file.write(f"{numButtons = }\n")
+        file.write(f"{gridType = }\n")
+        file.write(f"{starterSeed = }\n")
 
     # save each grid as a text file in directory
     for (seed, epLen, grid) in grids:
