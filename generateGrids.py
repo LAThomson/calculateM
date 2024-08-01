@@ -121,7 +121,7 @@ def generateGrids(number: int = 50,
         numButtons = (numButtons, numButtons)
 
     # now iterate over gridSeeds and use each to generate a random gridworld
-    for gridSeed in gridSeeds:
+    for gridSeed in tqdm(gridSeeds):
         (seed, epLen, grid) = createGrid(size, random.randint(numCoins[0], numCoins[1]), random.randint(numButtons[0], numButtons[1]), gridType, gridSeed, quiet)
         grids.append((seed, epLen, grid))
     
@@ -271,6 +271,7 @@ parser.add_argument("-s", "--size", type=_convertArg, default=DEFAULTSIZE)
 parser.add_argument("-c", "--numCoins", type=_convertArg, default=DEFAULTCOINS)
 parser.add_argument("-b", "--numButtons", type=_convertArg, default=DEFAULTBUTTONS)
 parser.add_argument("-t", "--gridType", type=int, default=1)
+parser.add_argument("-r", "--seed", type=int, default=SEED)
 
 if __name__ == "__main__":
 
@@ -281,7 +282,7 @@ if __name__ == "__main__":
     numCoins = args.numCoins
     numButtons = args.numButtons
     gridType = GridType(args.gridType)
-    starterSeed = SEED
+    starterSeed = args.seed
 
     # use chosen settings to generate grids
     grids = generateGrids(numGrids, size, numCoins, numButtons, gridType, starterSeed, True)
