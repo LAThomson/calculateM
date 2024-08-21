@@ -22,6 +22,8 @@ import numpy as np
 import random
 import copy
 import os
+import subprocess
+import sys
 
 GRIDSPATH = "./generatedEnvironments/"
 
@@ -121,7 +123,7 @@ def generateGrids(number: int = 50,
         numButtons = (numButtons, numButtons)
 
     # now iterate over gridSeeds and use each to generate a random gridworld
-    for gridSeed in tqdm(gridSeeds):
+    for gridSeed in tqdm(gridSeeds, "Generating Gridworlds"):
         (seed, epLen, grid) = createGrid(size, random.randint(numCoins[0], numCoins[1]), random.randint(numButtons[0], numButtons[1]), gridType, gridSeed, quiet)
         grids.append((seed, epLen, grid))
     
@@ -272,6 +274,7 @@ parser.add_argument("-c", "--numCoins", type=_convertArg, default=DEFAULTCOINS)
 parser.add_argument("-b", "--numButtons", type=_convertArg, default=DEFAULTBUTTONS)
 parser.add_argument("-t", "--gridType", type=int, default=1)
 parser.add_argument("-r", "--seed", type=int, default=SEED)
+parser.add_argument("-p", "--auto-pickle", action="store_true")
 
 if __name__ == "__main__":
 
@@ -283,6 +286,7 @@ if __name__ == "__main__":
     numButtons = args.numButtons
     gridType = GridType(args.gridType)
     starterSeed = args.seed
+    autoPickleFlag = args.auto_pickle
 
     # use chosen settings to generate grids
     grids = generateGrids(numGrids, size, numCoins, numButtons, gridType, starterSeed, True)
@@ -335,3 +339,7 @@ if __name__ == "__main__":
                 for i, c in enumerate(row):
                     file.write(f"{c:^{columnWidths[i]}} ")
                 file.write("\n")
+
+    # if auto-pickle flag is given, convert the grids to tensors and save using pickle
+    if autoPickleFlag:
+        subprocess.run([sys.executable, "convertToTensors.py", "-d", dirPath])

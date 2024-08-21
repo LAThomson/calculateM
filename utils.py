@@ -1,6 +1,7 @@
 from classes import Object, AStarNode, DLSNode, BFSNode
 
 import numpy as np
+import torch
 
 import re
 import heapq
@@ -9,6 +10,7 @@ import itertools
 import copy
 
 MAXDIST = 10e9
+CHANNELS = 7
 
 def parseEnv(filepath: str) -> tuple[int, list]:
     """Parses the given environment text file.
@@ -49,7 +51,7 @@ def parseEnv(filepath: str) -> tuple[int, list]:
         
         return (epLen, grid)
 
-def findAll(target: str, grid: list) -> list:
+def findAll(target: str, grid: list) -> list[Object]:
     """Takes a grid and a target object and finds all locations where that object appears.
 
     Parameters
@@ -407,10 +409,105 @@ def pprintGrid(grid: list, epLen: int = None):
             print(f"{c:^{columnWidths[i]}}", end=" ")
         print()
 
-def gridArrayToTensor(grid: list):
-    raise(NotImplementedError)
+def gridArrayToTensor(grid: list, epLen: int) -> torch.Tensor:
+    """Converts the given grid array into a state tensor.
 
-def gridTensorToArray(grid):
+    Takes in an array representation of a gridworld, with objects represented
+    by strings, and converts to the state tensor needed for the training process.
+    The state tensor has the shape [numChannels, height, width], where each
+    channel represents a different property of the state (e.g. wall locations,
+    coin locations and values, etc.). The default representations for the channels
+    are as follows:
+        0. Agent's current position;
+        1. Positions of any walls;
+        2. Positions and values of any uncollected coins;
+        3. Positions and values of any unpressed shutdown-delay buttons;
+        4. Positions and values of coins at the start of the mini-episode;
+        5. Positions and values of shutdown-delay buttons at the start of the mini-episode; and
+        6. Timesteps remaining until end of mini-episode.
+
+    Parameters
+    ----------
+    grid : list
+        The gridworld in array format.
+    epLen : int
+        The default number of steps until shutdown in this environment.
+
+    Returns
+    -------
+    gridTensor : torch.Tensor
+        The state tensor that represents the input gridworld.
+    """
+
+    # first, initialise width and height vars
+    width = len(grid)
+    height = len(grid[0])
+    
+    # initialise the state tensor
+    gridTensor = torch.zeros([CHANNELS, height, width])
+
+    # find all objects of note in the grid
+    agent = findAll("A", grid)[0]
+    walls = findAll("#", grid)
+    coins = findAll("C", grid)
+    buttons = findAll("SD", grid)
+
+    # now fill each channel one at a time, according to the description in the docstring
+    # Channel 0 = Agent's current position
+    gridTensor[0][agent.x][agent.y] = 1
+
+    # Channel 1 = Positions of any walls
+    for wall in walls:
+        gridTensor[1][wall.x][wall.y] = 1
+
+    # Channel 2 = Positions and values of any uncollected coins
+    for coin in coins:
+        gridTensor[2][coin.x][coin.y] = coin.value
+    
+    # Channel 3 = Positions and values of any unpressed shutdown-delay buttons
+    for button in buttons:
+        gridTensor[3][button.x][button.y] = button.value
+    
+    # Channel 4 = Initial positions and values of coins
+    gridTensor[4] = gridTensor[2]
+
+    # Channel 5 = Initial positions and values of shutdown-delay buttons
+    gridTensor[5] = gridTensor[3]
+
+    # Channel 6 = Timesteps remaining until end of mini-episode
+    # initialise timestep grid to (-1) where there are walls, (epLen) where the
+    # agent is, and (0) everywhere else
+    gridTensor[6] = gridTensor[1] * (-1)
+    gridTensor[6][agent.x][agent.y] = epLen
+
+    # iterate (epLen-1) times (similar to Bellman-Ford algorithm)
+    for _ in range(1, epLen):
+        # update each open (i.e. non-negative) square of the grid to one less
+        # than its highest (positive) value neighbour
+        for i in range(height):
+            for j in range(width):
+                
+                # if grid tile nonzero (is wall or shortest path already found), ignore
+                if gridTensor[6][i][j] != 0:
+                    continue
+
+                # else, get valid neighbour tiles and their values
+                neighbours = [(x,y) for (x,y) in [(i+1, j), (i, j+1), (i-1, j), (i, j-1)] if (0<=x<height and 0<=y<width)]
+                neighbourVals = [gridTensor[6][x][y] for (x,y) in neighbours if (gridTensor[6][x][y] > 0)]
+                
+                # if no positive neighbours, skip; else, set to one less than max neighbour value
+                if len(neighbourVals) != 0:
+                    gridTensor[6][i][j] = max(neighbourVals)-1
+    
+    # once finished, set all (-1) values to (0)
+    for i in range(height):
+        for j in range(width):
+            current = gridTensor[6][i][j]
+            gridTensor[6][i][j] = 0 if current <= 0 else current
+    
+    return gridTensor
+
+def gridTensorToArray(grid: torch.Tensor) -> tuple[list, int]:
     raise(NotImplementedError)
 
 def checkContiguous(grid: list) -> bool:
