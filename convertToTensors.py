@@ -10,7 +10,7 @@ from utils import parseEnv, gridArrayToTensor, gridTensorToArray
 
 CHANNELS = 7
 
-def parseGridToTensor(filePath: str) -> torch.Tensor:
+def parseGridToTensor(filePath: str) -> tuple[int, torch.Tensor]:
     """Reads a gridworld from a text file and returns its state tensor.
 
     Converts from a text representation of a gridworld to a tensor representation
@@ -26,6 +26,8 @@ def parseGridToTensor(filePath: str) -> torch.Tensor:
 
     Returns
     -------
+    epLen : int
+        The default number of timesteps before shutdown.
     gridTensor : torch.Tensor
         The state tensor that represents the input gridworld.
     """
@@ -34,9 +36,9 @@ def parseGridToTensor(filePath: str) -> torch.Tensor:
     epLen, grid = parseEnv(filePath)
 
     # convert the grid from list form to tensor form
-    gridTensor = gridArrayToTensor(grid, epLen)
+    gridTensor = gridArrayToTensor(grid)
 
-    return gridTensor
+    return epLen, gridTensor
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-d", "--data", type=str, default="./generatedEnvironments/seed_10_EASY_x1000")
@@ -51,8 +53,8 @@ if __name__ == "__main__":
 
     dataset = []
     for fileName in tqdm(os.listdir(dataPath), "Converting to Tensors"):
-        gridTensor = parseGridToTensor(os.path.join(dataPath, fileName))
-        dataset.append(gridTensor)
+        epLen, gridTensor = parseGridToTensor(os.path.join(dataPath, fileName))
+        dataset.append((epLen, gridTensor))
     
     outputPath = os.path.join(dataPath, "..", "dataset.pickle")
     with open(outputPath, "wb") as out:

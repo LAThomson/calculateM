@@ -10,7 +10,7 @@ import itertools
 import copy
 
 MAXDIST = 10e9
-CHANNELS = 7
+CHANNELS = 6
 
 def parseEnv(filepath: str) -> tuple[int, list]:
     """Parses the given environment text file.
@@ -409,7 +409,7 @@ def pprintGrid(grid: list, epLen: int = None):
             print(f"{c:^{columnWidths[i]}}", end=" ")
         print()
 
-def gridArrayToTensor(grid: list, epLen: int) -> torch.Tensor:
+def gridArrayToTensor(grid: list) -> torch.Tensor:
     """Converts the given grid array into a state tensor.
 
     Takes in an array representation of a gridworld, with objects represented
@@ -422,16 +422,13 @@ def gridArrayToTensor(grid: list, epLen: int) -> torch.Tensor:
         1. Positions of any walls;
         2. Positions and values of any uncollected coins;
         3. Positions and values of any unpressed shutdown-delay buttons;
-        4. Positions and values of coins at the start of the mini-episode;
-        5. Positions and values of shutdown-delay buttons at the start of the mini-episode; and
-        6. Timesteps remaining until end of mini-episode.
+        4. Positions and values of coins at the start of the mini-episode; and
+        5. Positions and values of shutdown-delay buttons at the start of the mini-episode.
 
     Parameters
     ----------
     grid : list
         The gridworld in array format.
-    epLen : int
-        The default number of steps until shutdown in this environment.
 
     Returns
     -------
@@ -473,37 +470,6 @@ def gridArrayToTensor(grid: list, epLen: int) -> torch.Tensor:
 
     # Channel 5 = Initial positions and values of shutdown-delay buttons
     gridTensor[5] = gridTensor[3]
-
-    # Channel 6 = Timesteps remaining until end of mini-episode
-    # initialise timestep grid to (-1) where there are walls, (epLen) where the
-    # agent is, and (0) everywhere else
-    gridTensor[6] = gridTensor[1] * (-1)
-    gridTensor[6][agent.x][agent.y] = epLen
-
-    # iterate (epLen-1) times (similar to Bellman-Ford algorithm)
-    for _ in range(1, epLen):
-        # update each open (i.e. non-negative) square of the grid to one less
-        # than its highest (positive) value neighbour
-        for i in range(height):
-            for j in range(width):
-                
-                # if grid tile nonzero (is wall or shortest path already found), ignore
-                if gridTensor[6][i][j] != 0:
-                    continue
-
-                # else, get valid neighbour tiles and their values
-                neighbours = [(x,y) for (x,y) in [(i+1, j), (i, j+1), (i-1, j), (i, j-1)] if (0<=x<height and 0<=y<width)]
-                neighbourVals = [gridTensor[6][x][y] for (x,y) in neighbours if (gridTensor[6][x][y] > 0)]
-                
-                # if no positive neighbours, skip; else, set to one less than max neighbour value
-                if len(neighbourVals) != 0:
-                    gridTensor[6][i][j] = max(neighbourVals)-1
-    
-    # once finished, set all (-1) values to (0)
-    for i in range(height):
-        for j in range(width):
-            current = gridTensor[6][i][j]
-            gridTensor[6][i][j] = 0 if current <= 0 else current
     
     return gridTensor
 
