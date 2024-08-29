@@ -6,18 +6,17 @@ import torch
 
 from tqdm import tqdm
 
-from utils import parseEnv, gridArrayToTensor, gridTensorToArray
+from utils import parseEnv, gridArrayToTensor, getMScores
 
-CHANNELS = 7
-
-def parseGridToTensor(filePath: str) -> tuple[int, torch.Tensor]:
+def parseGridToTensor(filePath: str) -> tuple[int, torch.Tensor, dict]:
     """Reads a gridworld from a text file and returns its state tensor.
 
     Converts from a text representation of a gridworld to a tensor representation
     with dimensions [numChannels, height, width]; the width and height are determined
     by the contents of the file, while the channels represent encodings of
     different objects in the gridworld (must be decided beforehand - see
-    `utils.gridArrayToTensor` method for explanation of state tensor).
+    `utils.gridArrayToTensor` method for explanation of state tensor). Also packages
+    information on possible trajectories / maximum available coins.
 
     Parameters
     ----------
@@ -30,6 +29,9 @@ def parseGridToTensor(filePath: str) -> tuple[int, torch.Tensor]:
         The default number of timesteps before shutdown.
     gridTensor : torch.Tensor
         The state tensor that represents the input gridworld.
+    mScores : dict
+        A dictionary indexed by trajectory length containing the max score for that length
+        and a path (list) of objects that gives you this max score.
     """
 
     # read the file and parse the gridworld
@@ -38,7 +40,10 @@ def parseGridToTensor(filePath: str) -> tuple[int, torch.Tensor]:
     # convert the grid from list form to tensor form
     gridTensor = gridArrayToTensor(grid)
 
-    return epLen, gridTensor
+    # get the various trajectory lengths and maximum available coins for the grid
+    mScores = getMScores(grid, epLen, quiet=True)
+
+    return epLen, gridTensor, mScores
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-d", "--data", type=str, default="./generatedEnvironments/seed_10_EASY_x1000")
@@ -53,8 +58,8 @@ if __name__ == "__main__":
 
     dataset = []
     for fileName in tqdm(os.listdir(dataPath), "Converting to Tensors"):
-        epLen, gridTensor = parseGridToTensor(os.path.join(dataPath, fileName))
-        dataset.append((epLen, gridTensor))
+        sample = parseGridToTensor(os.path.join(dataPath, fileName))
+        dataset.append(sample)
     
     outputPath = os.path.join(dataPath, "..", "dataset.pickle")
     with open(outputPath, "wb") as out:
