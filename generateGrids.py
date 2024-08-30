@@ -268,13 +268,13 @@ def _convertArg(arg: str) -> Union[int, tuple[int, int]]:
             raise(TypeError, "An argument is not in the correct format. Please try again.")
 
 parser = argparse.ArgumentParser()
-parser.add_argument("-n", "--number", type=int, default=50)
-parser.add_argument("-s", "--size", type=_convertArg, default=DEFAULTSIZE)
-parser.add_argument("-c", "--numCoins", type=_convertArg, default=DEFAULTCOINS)
-parser.add_argument("-b", "--numButtons", type=_convertArg, default=DEFAULTBUTTONS)
-parser.add_argument("-t", "--gridType", type=int, default=1)
-parser.add_argument("-r", "--seed", type=int, default=SEED)
-parser.add_argument("-p", "--auto-pickle", action="store_true")
+parser.add_argument("-n", dest="number", type=int, default=50, help="the number of gridworlds to generate [type: %(type)s] (default: %(default)s)")
+parser.add_argument("-s", dest="size", type=_convertArg, default=DEFAULTSIZE, help="the dimensions of each gridworld [type: int|(int,int)] (default: %(default)s)")
+parser.add_argument("-c", dest="numCoins", type=_convertArg, default=DEFAULTCOINS, help="the minimum and maximum number of coins in a gridworld [type: int|(int,int)] (default: %(default)s)")
+parser.add_argument("-b", dest="numButtons", type=_convertArg, default=DEFAULTBUTTONS, help="the minimum and maximum number of shutdown-delay buttons in a gridworld [type: int|(int,int)] (default: %(default)s)")
+parser.add_argument("-t", dest="gridType", type=int, default=1, choices=range(0,3), help="the type of grids to generate, dinstinguished by 'difficulty' = number of walls [type: %(type)s] (default: %(default)s)")
+parser.add_argument("-r", dest="seed", type=int, default=SEED, help="the initial random seed to use [type: %(type)s] (default: %(default)s)")
+parser.add_argument("-p", "--auto-pickle", action="store_true", help="whether to automatically package grids into a pickled dataset suitable for experiments [type: %(type)s] (default: %(default)s)")
 
 if __name__ == "__main__":
 
