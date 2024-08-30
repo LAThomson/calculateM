@@ -274,7 +274,7 @@ parser.add_argument("-c", dest="numCoins", type=_convertArg, default=DEFAULTCOIN
 parser.add_argument("-b", dest="numButtons", type=_convertArg, default=DEFAULTBUTTONS, help="the minimum and maximum number of shutdown-delay buttons in a gridworld [type: int|(int,int)] (default: %(default)s)")
 parser.add_argument("-t", dest="gridType", type=int, default=1, choices=range(0,3), help="the type of grids to generate, dinstinguished by 'difficulty' = number of walls [type: %(type)s] (default: %(default)s)")
 parser.add_argument("-r", dest="seed", type=int, default=SEED, help="the initial random seed to use [type: %(type)s] (default: %(default)s)")
-parser.add_argument("-p", "--auto-pickle", action="store_true", help="whether to automatically package grids into a pickled dataset suitable for experiments [type: %(type)s] (default: %(default)s)")
+parser.add_argument("-p", "--auto-pickle", action="store_true", help="whether to automatically package grids into a pickled dataset suitable for experiments (default: %(default)s)")
 
 if __name__ == "__main__":
 
